@@ -13,6 +13,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <!-- Chart.js for Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -227,10 +229,16 @@
             padding: 1rem;
         }
 
-        .dragging {
-            opacity: 0.5;
-            transform: rotate(5deg);
-        }
+        .task-card.sortable-ghost {
+    opacity: 0.4;
+    background: #c8ebfb; /* A light blue placeholder color */
+}
+
+.task-card.sortable-drag {
+    opacity: 0.9 !important; /* Make sure the dragged item is almost fully visible */
+    transform: rotate(5deg);
+    box-shadow: var(--shadow-heavy);
+}
 
         .drag-over {
             border: 2px dashed var(--primary-color);
@@ -663,20 +671,17 @@
                 <!-- Tasks Content -->
                 <div class="tab-pane fade show active" id="tasks-content" role="tabpanel">
                     <div class="row" id="task-board">
-                        <!-- To-Do -->
                         <div class="col-lg-4 col-md-6 mb-4">
                             <h4 class="column-header">To-Do</h4>
-                            <div id="todo-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                            <div id="todo-column" class="task-column"></div>
                         </div>
-                        <!-- In-Progress -->
                         <div class="col-lg-4 col-md-6 mb-4">
                             <h4 class="column-header">In-Progress</h4>
-                            <div id="inprogress-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                            <div id="inprogress-column" class="task-column"></div>
                         </div>
-                        <!-- Done -->
                         <div class="col-lg-4 col-md-6 mb-4">
                             <h4 class="column-header">Done</h4>
-                            <div id="done-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                            <div id="done-column" class="task-column"></div>
                         </div>
                     </div>
                 </div>
@@ -1031,7 +1036,32 @@
                     default: return '';
                 }
             };
-
+            // --- Drag and Drop with SortableJS ---
+const initializeSortable = () => {
+    const columns = document.querySelectorAll('.task-column');
+    columns.forEach(col => {
+        new Sortable(col, {
+            group: 'shared', // set a group name for all columns
+            animation: 150,
+            ghostClass: 'blue-background-class', // Class for the drop-placeholder
+            onEnd: async (evt) => {
+                const taskId = evt.item.dataset.taskId;
+                const newStatus = evt.to.id.replace('-column', '');
+                
+                const project = findProject(currentProjectId);
+                if (project) {
+                    const task = project.tasks.find(t => t.id === taskId);
+                    if (task && task.status !== newStatus) {
+                        task.status = newStatus;
+                        await saveProjects();
+                        // The UI update will be handled by the realtime listener,
+                        // but you can call renderProjectDetail() for an immediate refresh if needed.
+                    }
+                }
+            }
+        });
+    });
+};
             // --- Render Functions ---
             const renderProjects = (filter = '') => {
                 projectList.innerHTML = '';
@@ -1155,85 +1185,88 @@
             };
 
             const renderTasks = () => {
-                const project = findProject(currentProjectId);
-                if (!project) return;
-                
-                // Ensure project has tasks array
-                if (!project.tasks) project.tasks = [];
-                
-                const columns = {
-                    todo: document.getElementById('todo-column'),
-                    inprogress: document.getElementById('inprogress-column'),
-                    done: document.getElementById('done-column')
-                };
-                
-                Object.values(columns).forEach(col => col.innerHTML = '');
-                
-                // Add "Add Task" button to To-Do column
-                columns.todo.innerHTML = `
-                    <button class="btn btn-primary w-100 mb-3" onclick="openTaskModal()">
-                        <span class="material-icons align-middle me-2">add</span>Add Task
-                    </button>
-                `;
+    const project = findProject(currentProjectId);
+    if (!project) return;
+    
+    // Ensure project has tasks array
+    if (!project.tasks) project.tasks = [];
+    
+    const columns = {
+        todo: document.getElementById('todo-column'),
+        inprogress: document.getElementById('inprogress-column'),
+        done: document.getElementById('done-column')
+    };
+    
+    Object.values(columns).forEach(col => col.innerHTML = '');
+    
+    // Add "Add Task" button to To-Do column
+    columns.todo.innerHTML = `
+        <button class="btn btn-primary w-100 mb-3" onclick="openTaskModal()">
+            <span class="material-icons align-middle me-2">add</span>Add Task
+        </button>
+    `;
 
-                if (project.tasks.length === 0) {
-                    columns.todo.innerHTML += `
-                        <div class="text-center text-muted py-4">
-                            <span class="material-icons mb-2" style="font-size: 3rem; opacity: 0.5;">task_alt</span>
-                            <p class="mb-0">No tasks yet. Add your first task!</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                project.tasks.forEach(task => {
-                    // Skip invalid tasks
-                    if (!task || !task.id) return;
-                    
-                    const taskCard = document.createElement('div');
-                    taskCard.className = 'card task-card mb-3';
-                    taskCard.draggable = true;
-                    taskCard.id = task.id;
-                    taskCard.dataset.taskId = task.id;
-                    taskCard.innerHTML = `
-                        <div class="card-body">
-                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="card-title fw-bold mb-0">${task.title || 'Untitled Task'}</h6>
-                                ${getPriorityBadge(task.priority)}
-                            </div>
-                            ${task.details ? `<p class="card-text small text-muted mb-3">${task.details.substring(0,80)}${task.details.length > 80 ? '...' : ''}</p>` : ''}
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center">
-                                    ${task.deadline ? `
-                                        <span class="material-icons me-1 text-muted" style="font-size: 1rem;">event</span>
-                                        <small class="text-muted">${task.deadline}</small>
-                                    ` : ''}
-                                </div>
-                                <div class="d-flex gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary" onclick="openTaskModal('${task.id}')" title="Edit">
-                                        <span class="material-icons" style="font-size: 1rem;">edit</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask('${task.id}')" title="Delete">
-                                        <span class="material-icons" style="font-size: 1rem;">delete</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    taskCard.addEventListener('dragstart', dragStart);
-                    
-                    // Ensure task has a valid status
-                    const status = task.status || 'todo';
-                    const columnKey = status.replace('-', '');
-                    if (columns[columnKey]) {
-                        columns[columnKey].appendChild(taskCard);
-                    } else {
-                        // Fallback to todo column
-                        columns.todo.appendChild(taskCard);
-                    }
-                });
-            };
+    if (project.tasks.length > 0) {
+        project.tasks.forEach(task => {
+            // Skip invalid tasks
+            if (!task || !task.id) return;
             
+            const taskCard = document.createElement('div');
+            taskCard.className = 'card task-card mb-3';
+            taskCard.draggable = true;
+            taskCard.id = task.id;
+            taskCard.dataset.taskId = task.id;
+
+            taskCard.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title fw-bold mb-0">${task.title || 'Untitled Task'}</h6>
+                        ${getPriorityBadge(task.priority)}
+                    </div>
+                    ${task.details ? `<p class="card-text small text-muted mb-3">${task.details.substring(0,80)}${task.details.length > 80 ? '...' : ''}</p>` : ''}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            ${task.deadline ? `
+                                <span class="material-icons me-1 text-muted" style="font-size: 1rem;">event</span>
+                                <small class="text-muted">${task.deadline}</small>
+                            ` : ''}
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openTaskModal('${task.id}')" title="Edit">
+                                <span class="material-icons" style="font-size: 1rem;">edit</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTask('${task.id}')" title="Delete">
+                                <span class="material-icons" style="font-size: 1rem;">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Ensure task has a valid status
+            const status = task.status || 'todo';
+            const columnKey = status.replace('-', '');
+            if (columns[columnKey]) {
+                columns[columnKey].appendChild(taskCard);
+            } else {
+                // Fallback to todo column
+                columns.todo.appendChild(taskCard);
+            }
+        });
+    } else {
+        columns.todo.innerHTML += `
+            <div class="text-center text-muted py-4">
+                <span class="material-icons mb-2" style="font-size: 3rem; opacity: 0.5;">task_alt</span>
+                <p class="mb-0">No tasks yet. Add your first task!</p>
+            </div>
+        `;
+    }
+
+    // Initialize SortableJS AFTER all cards are rendered
+    initializeSortable();
+};
+                    
+                    
             const renderIdeas = () => {
                 const project = findProject(currentProjectId);
                 if (!project) return;
@@ -1515,42 +1548,7 @@
             };
 
 
-            // --- Drag and Drop Logic ---
-            const dragStart = (e) => {
-                e.dataTransfer.setData('text/plain', e.target.id);
-                setTimeout(() => e.target.classList.add('dragging'), 0);
-            };
-
-            const dragEnd = (e) => {
-                e.target.classList.remove('dragging');
-            };
-
-            document.querySelectorAll('.task-column').forEach(col => {
-                col.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    const draggingCard = document.querySelector('.dragging');
-                    if (draggingCard) {
-                        col.classList.add('drag-over');
-                    }
-                });
-                col.addEventListener('dragleave', (e) => {
-                     col.classList.remove('drag-over');
-                });
-                col.addEventListener('drop', async (e) => {
-                    e.preventDefault();
-                    col.classList.remove('drag-over');
-                    const taskId = e.dataTransfer.getData('text/plain');
-                    const droppedCard = document.getElementById(taskId);
-                    const newStatus = col.id.replace('-column', '');
-                    
-                    const project = findProject(currentProjectId);
-                    const task = project.tasks.find(t => t.id === taskId);
-                    task.status = newStatus;
-                    
-                    await saveProjects();
-                });
-                col.addEventListener('dragend', dragEnd);
-            });
+            
 
 
             // --- Authentication Functions ---
