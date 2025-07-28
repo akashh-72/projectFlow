@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectFlow - Login</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5nKP_Zke-oU3HYnUDJ6JaimMWAMw3eW8",
+            authDomain: "projectflow-66c63.firebaseapp.com",
+            projectId: "projectflow-66c63",
+            storageBucket: "projectflow-66c63.firebasestorage.app",
+            messagingSenderId: "220852774233",
+            appId: "1:220852774233:web:cbd52871da160617b79848",
+            databaseURL: "https://projectflow-66c63-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        window.firebaseAuth = {
+            auth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged
+        };
+
+        window.firebaseDB = {
+            database,
+            ref,
+            set
+        };
+
+        // Check authentication state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in, redirect to main app
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+    
+    <!-- Custom CSS (copied from index.html for consistency) -->
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --dark-bg: #1a1a1a;
+            --light-card-bg: #ffffff;
+            --dark-card-bg: #2c2c2c;
+            --light-text: #212529;
+            --dark-text: #f8f9fa;
+            --border-color: #dee2e6;
+            --dark-border-color: #444;
+            --shadow-light: 0 2px 10px rgba(0,0,0,0.08);
+            --shadow-medium: 0 4px 20px rgba(0,0,0,0.12);
+            --shadow-heavy: 0 8px 30px rgba(0,0,0,0.15);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        [data-bs-theme="light"] { background-color: var(--light-bg); color: var(--light-text); }
+        [data-bs-theme="dark"] { background-color: var(--dark-bg); color: var(--dark-text); }
+        .navbar {
+            box-shadow: var(--shadow-light);
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+        [data-bs-theme="dark"] .navbar {
+            background-color: rgba(26, 26, 26, 0.95) !important;
+            border-bottom: 1px solid var(--dark-border-color);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary-color) !important;
+        }
+        .auth-container {
+            min-height: calc(100vh - 70px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .auth-card {
+            background: var(--light-card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            overflow: hidden;
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        [data-bs-theme="dark"] .auth-card {
+            background: var(--dark-card-bg);
+            border: 1px solid var(--dark-border-color);
+        }
+        .auth-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+        .auth-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        .auth-header p {
+            opacity: 0.9;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .auth-body { padding: 2rem; }
+        .form-floating { margin-bottom: 1.5rem; }
+        .form-control {
+            border-radius: var(--border-radius-sm);
+            border: 2px solid var(--border-color);
+            padding: 1rem 1rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        }
+        [data-bs-theme="dark"] .form-control {
+            background-color: #333;
+            color: var(--dark-text);
+            border-color: var(--dark-border-color);
+        }
+        [data-bs-theme="dark"] .form-control:focus {
+            background-color: #444;
+            border-color: var(--primary-color);
+        }
+        .btn {
+            border-radius: var(--border-radius-sm);
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+        .btn-outline-primary {
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            background: transparent;
+        }
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        .auth-toggle {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+        [data-bs-theme="dark"] .auth-toggle {
+            border-top-color: var(--dark-border-color);
+        }
+        .auth-toggle a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .auth-toggle a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        .form-check { margin-bottom: 1.5rem; }
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .alert {
+            border-radius: var(--border-radius-sm);
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            z-index: 10;
+        }
+        .password-toggle:hover { color: var(--primary-color); }
+        .form-floating { position: relative; }
+        .password-field { position: relative; }
+        .theme-toggle { display: none; }
+        .form-check-input { cursor: pointer; }
+        .form-check-label { cursor: pointer; user-select: none; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        .slide-up { animation: slideUp 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 576px) {
+            .auth-container { padding: 1rem 0.5rem; }
+            .auth-card { margin: 0 0.5rem; }
+            .auth-header { padding: 1.5rem; }
+            .auth-header h1 { font-size: 1.75rem; }
+            .auth-body { padding: 1.5rem; }
+            .btn { padding: 0.75rem 1.5rem; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar (responsive, professional) -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center mx-auto mx-lg-0" href="#">
+                <span class="material-icons align-middle me-2">dynamic_feed</span>
+                ProjectFlow
+            </a>
+            <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarLoginCollapse" aria-controls="navbarLoginCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarLoginCollapse">
+                <div class="d-flex align-items-center gap-3 ms-auto mt-3 mt-lg-0">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle">
+                        <label class="form-check-label d-flex align-items-center" for="theme-toggle">
+                            <span class="material-icons align-middle" id="theme-icon">light_mode</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="auth-container">
+        <div class="auth-card fade-in">
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-content">
+                <div class="auth-header">
+                    <h1>Welcome Back</h1>
+                    <p>Sign in to continue to ProjectFlow</p>
+                </div>
+                <div class="auth-body">
+                    <div id="loginAlert" class="alert alert-danger" style="display: none;"></div>
+                    <form id="loginFormElement">
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="loginEmail" placeholder="Email" required>
+                            <label for="loginEmail">Email address</label>
+                        </div>
+                        <div class="form-floating password-field">
+                            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
+                            <label for="loginPassword">Password</label>
+                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" id="loginBtn">
+                            <span class="material-icons align-middle me-2">login</span>
+                            Sign In
+                        </button>
+                    </form>
+                    <div class="loading" id="loginLoading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="auth-toggle">
+                        <p class="mb-0">Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+                    </div>
+                </div>
+            </div>
+            <!-- Signup Form -->
+            <div id="signupForm" class="auth-content" style="display: none;">
+                <div class="auth-header">
+                    <h1>Create Account</h1>
+                    <p>Join ProjectFlow and start managing your projects</p>
+                </div>
+                <div class="auth-body">
+                    <div id="signupAlert" class="alert alert-danger" style="display: none;"></div>
+                    <form id="signupFormElement">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="signupName" placeholder="Full Name" required>
+                            <label for="signupName">Full Name</label>
+                        </div>
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="signupEmail" placeholder="Email" required>
+                            <label for="signupEmail">Email address</label>
+                        </div>
+                        <div class="form-floating password-field">
+                            <input type="password" class="form-control" id="signupPassword" placeholder="Password" required minlength="6">
+                            <label for="signupPassword">Password (min 6 characters)</label>
+                            <button type="button" class="password-toggle" onclick="togglePassword('signupPassword')">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </div>
+                        <div class="form-floating password-field">
+                            <input type="password" class="form-control" id="signupConfirmPassword" placeholder="Confirm Password" required>
+                            <label for="signupConfirmPassword">Confirm Password</label>
+                            <button type="button" class="password-toggle" onclick="togglePassword('signupConfirmPassword')">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                            <label class="form-check-label" for="agreeTerms">
+                                I agree to the <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" id="signupBtn">
+                            <span class="material-icons align-middle me-2">person_add</span>
+                            Create Account
+                        </button>
+                    </form>
+                    <div class="loading" id="signupLoading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="auth-toggle">
+                        <p class="mb-0">Already have an account? <a href="#" onclick="showLogin()">Sign in</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript (unchanged) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme Toggle
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const setInitialTheme = () => {
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme) {
+                    document.documentElement.setAttribute('data-bs-theme', storedTheme);
+                    if (storedTheme === 'dark') {
+                        themeToggle.checked = true;
+                        themeIcon.textContent = 'dark_mode';
+                    }
+                }
+            };
+            themeToggle.addEventListener('change', () => {
+                if (themeToggle.checked) {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    themeIcon.textContent = 'dark_mode';
+                } else {
+                    document.documentElement.setAttribute('data-bs-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    themeIcon.textContent = 'light_mode';
+                }
+            });
+            // Form Handling (unchanged)
+            const loginForm = document.getElementById('loginFormElement');
+            const signupForm = document.getElementById('signupFormElement');
+            const loginAlert = document.getElementById('loginAlert');
+            const signupAlert = document.getElementById('signupAlert');
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                const loginBtn = document.getElementById('loginBtn');
+                const loginLoading = document.getElementById('loginLoading');
+                loginBtn.disabled = true;
+                loginLoading.style.display = 'block';
+                loginAlert.style.display = 'none';
+                try {
+                    await window.firebaseAuth.signInWithEmailAndPassword(window.firebaseAuth.auth, email, password);
+                } catch (error) {
+                    console.error('Login error:', error);
+                    loginAlert.textContent = getErrorMessage(error.code);
+                    loginAlert.style.display = 'block';
+                } finally {
+                    loginBtn.disabled = false;
+                    loginLoading.style.display = 'none';
+                }
+            });
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('signupName').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
+                const confirmPassword = document.getElementById('signupConfirmPassword').value;
+                const signupBtn = document.getElementById('signupBtn');
+                const signupLoading = document.getElementById('signupLoading');
+                if (password !== confirmPassword) {
+                    signupAlert.textContent = 'Passwords do not match';
+                    signupAlert.style.display = 'block';
+                    return;
+                }
+                signupBtn.disabled = true;
+                signupLoading.style.display = 'block';
+                signupAlert.style.display = 'none';
+                try {
+                    const userCredential = await window.firebaseAuth.createUserWithEmailAndPassword(
+                        window.firebaseAuth.auth, 
+                        email, 
+                        password
+                    );
+                    const user = userCredential.user;
+                    await window.firebaseDB.set(
+                        window.firebaseDB.ref(window.firebaseDB.database, `users/${user.uid}`),
+                        {
+                            uid: user.uid,
+                            name: name,
+                            email: email,
+                            createdAt: new Date().toISOString(),
+                            projects: []
+                        }
+                    );
+                } catch (error) {
+                    console.error('Signup error:', error);
+                    signupAlert.textContent = getErrorMessage(error.code);
+                    signupAlert.style.display = 'block';
+                } finally {
+                    signupBtn.disabled = false;
+                    signupLoading.style.display = 'none';
+                }
+            });
+            setInitialTheme();
+        });
+        window.showSignup = () => {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupForm').style.display = 'block';
+            document.getElementById('signupForm').classList.add('slide-up');
+        };
+        window.showLogin = () => {
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('loginForm').classList.add('slide-up');
+        };
+        window.togglePassword = (fieldId) => {
+            const field = document.getElementById(fieldId);
+            const toggle = field.nextElementSibling.nextElementSibling;
+            const icon = toggle.querySelector('.material-icons');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.textContent = 'visibility_off';
+            } else {
+                field.type = 'password';
+                icon.textContent = 'visibility';
+            }
+        };
+        function getErrorMessage(errorCode) {
+            switch (errorCode) {
+                case 'auth/user-not-found':
+                    return 'No account found with this email address';
+                case 'auth/wrong-password':
+                    return 'Incorrect password';
+                case 'auth/invalid-email':
+                    return 'Invalid email address';
+                case 'auth/weak-password':
+                    return 'Password should be at least 6 characters';
+                case 'auth/email-already-in-use':
+                    return 'An account with this email already exists';
+                case 'auth/too-many-requests':
+                    return 'Too many failed attempts. Please try again later';
+                default:
+                    return 'An error occurred. Please try again';
+            }
+        }
+    </script>
+</body>
+</html> 

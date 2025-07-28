@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectFlow - Your Project Management Hub</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getDatabase, ref, set, get, push, remove, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5nKP_Zke-oU3HYnUDJ6JaimMWAMw3eW8",
+            authDomain: "projectflow-66c63.firebaseapp.com",
+            projectId: "projectflow-66c63",
+            storageBucket: "projectflow-66c63.firebasestorage.app",
+            messagingSenderId: "220852774233",
+            appId: "1:220852774233:web:cbd52871da160617b79848",
+            databaseURL: "https://projectflow-66c63-default-rtdb.firebaseio.com"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        // Make Firebase functions globally available
+        window.firebaseDB = {
+            database,
+            ref,
+            set,
+            get,
+            push,
+            remove,
+            onValue
+        };
+
+        window.firebaseAuth = {
+            auth,
+            signOut,
+            onAuthStateChanged
+        };
+
+        // Check authentication state
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                // User is not signed in, redirect to login
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --dark-bg: #1a1a1a;
+            --light-card-bg: #ffffff;
+            --dark-card-bg: #2c2c2c;
+            --light-text: #212529;
+            --dark-text: #f8f9fa;
+            --border-color: #dee2e6;
+            --dark-border-color: #444;
+            --shadow-light: 0 2px 10px rgba(0,0,0,0.08);
+            --shadow-medium: 0 4px 20px rgba(0,0,0,0.12);
+            --shadow-heavy: 0 8px 30px rgba(0,0,0,0.15);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        [data-bs-theme="light"] {
+            background-color: var(--light-bg);
+            color: var(--light-text);
+        }
+
+        [data-bs-theme="dark"] {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+        
+        [data-bs-theme="dark"] .card,
+        [data-bs-theme="dark"] .modal-content,
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: var(--dark-card-bg);
+            border-color: var(--dark-border-color);
+        }
+        
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select {
+            background-color: #333;
+            color: var(--dark-text);
+            border-color: var(--dark-border-color);
+        }
+
+        [data-bs-theme="dark"] .form-control:focus,
+        [data-bs-theme="dark"] .form-select:focus {
+            background-color: #444;
+            color: var(--dark-text);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .navbar {
+            box-shadow: var(--shadow-light);
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        [data-bs-theme="dark"] .navbar {
+            background-color: rgba(26, 26, 26, 0.95) !important;
+            border-bottom: 1px solid var(--dark-border-color);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary-color) !important;
+        }
+
+        .project-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .project-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .project-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.5em 1em;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .progress {
+            border-radius: 10px;
+            background-color: rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        [data-bs-theme="dark"] .progress {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .progress-bar {
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 10px;
+        }
+        
+        .task-column {
+            background: linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.05) 100%);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            min-height: 500px;
+            border: 2px dashed transparent;
+            transition: all 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] .task-column {
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 100%);
+        }
+        
+        .task-card {
+            cursor: grab;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .task-card:hover {
+            box-shadow: var(--shadow-medium);
+            transform: translateY(-2px);
+        }
+
+        .task-card:active {
+            cursor: grabbing;
+        }
+
+        .task-card .card-body {
+            padding: 1rem;
+        }
+
+        .dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .drag-over {
+            border: 2px dashed var(--primary-color);
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        [data-bs-theme="dark"] .drag-over {
+            background: rgba(0, 123, 255, 0.1);
+        }
+        
+        #projectDetailView {
+            display: none;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 400px;
+        }
+
+        .search-container .form-control {
+            border-radius: 25px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-container .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        }
+
+        .project-overview {
+            background: linear-gradient(135deg, var(--light-card-bg) 0%, rgba(0,123,255,0.05) 100%);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+        }
+
+        [data-bs-theme="dark"] .project-overview {
+            background: linear-gradient(135deg, var(--dark-card-bg) 0%, rgba(0,123,255,0.1) 100%);
+        }
+
+        .back-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .back-link:hover {
+            color: var(--primary-color);
+            transform: translateX(-5px);
+        }
+
+        .project-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--light-text);
+        }
+
+        [data-bs-theme="dark"] .project-title {
+            color: var(--dark-text);
+        }
+
+        .project-description {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        [data-bs-theme="dark"] .nav-tabs {
+            border-bottom-color: var(--dark-border-color);
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 0;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+            color: var(--secondary-color);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--primary-color);
+            background: transparent;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background: transparent;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .column-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--light-text);
+            padding: 0.75rem;
+            background: rgba(0,123,255,0.1);
+            border-radius: var(--border-radius-sm);
+        }
+
+        [data-bs-theme="dark"] .column-header {
+            color: var(--dark-text);
+            background: rgba(0,123,255,0.2);
+        }
+
+        .btn {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            padding: 0.5rem 1.5rem;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+
+        .btn-outline-primary {
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .modal-content {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--light-text);
+        }
+
+        [data-bs-theme="dark"] .form-label {
+            color: var(--dark-text);
+        }
+
+        .form-control, .form-select {
+            border-radius: var(--border-radius-sm);
+            border: 2px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        }
+
+        .list-group-item {
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .list-group-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .analytics-container {
+            background: var(--light-card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            margin-bottom: 2rem;
+        }
+
+        [data-bs-theme="dark"] .analytics-container {
+            background: var(--dark-card-bg);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem 0.5rem;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .search-container {
+                max-width: 100%;
+            }
+
+            .project-title {
+                font-size: 2rem;
+            }
+
+            .task-board {
+                flex-direction: column;
+            }
+
+            .task-column {
+                margin-bottom: 2rem;
+                min-height: 300px;
+            }
+
+            .project-card .card-body {
+                padding: 1rem;
+            }
+
+            .nav-tabs .nav-link {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .modal-dialog {
+                margin: 1rem;
+            }
+
+            .project-overview {
+                padding: 1.5rem;
+            }
+
+            .analytics-container {
+                padding: 1rem;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .navbar-brand {
+                font-size: 1.25rem;
+            }
+
+            .project-title {
+                font-size: 1.75rem;
+            }
+
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .task-card .card-body {
+                padding: 0.75rem;
+            }
+
+            .column-header {
+                font-size: 1.1rem;
+                padding: 0.5rem;
+            }
+        }
+
+        /* Loading and empty states */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--secondary-color);
+        }
+
+        .empty-state .material-icons {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Smooth animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#" onclick="showDashboard()">
+                <span class="material-icons align-middle me-2">dynamic_feed</span>
+                ProjectFlow
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle">
+                    <label class="form-check-label d-flex align-items-center" for="theme-toggle">
+                        <span class="material-icons align-middle" id="theme-icon">light_mode</span>
+                    </label>
+                </div>
+                <button class="btn btn-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addProjectModal">
+                    <span class="material-icons align-middle me-2">add</span>
+                    <span class="d-none d-sm-inline">New Project</span>
+                    <span class="d-sm-none">Add</span>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="material-icons align-middle me-2">account_circle</span>
+                        <span class="d-none d-sm-inline" id="userName">User</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header" id="userEmail">user@example.com</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="showUserProfile()">
+                            <span class="material-icons align-middle me-2">person</span>Profile
+                        </a></li>
+                        <li><a class="dropdown-item d-flex align-items-center" href="#" onclick="showSettings()">
+                            <span class="material-icons align-middle me-2">settings</span>Settings
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item d-flex align-items-center text-danger" href="#" onclick="logout()">
+                            <span class="material-icons align-middle me-2">logout</span>Sign Out
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="fade-in">
+            <div class="dashboard-header d-flex justify-content-between align-items-center">
+                <h1 class="h2 mb-0">My Projects</h1>
+                <div class="search-container">
+                    <input type="text" id="projectSearch" class="form-control" placeholder="Search projects...">
+                </div>
+            </div>
+            <div id="project-list" class="row g-4">
+                <!-- Project cards will be injected here -->
+            </div>
+        </div>
+
+        <!-- Project Detail View -->
+        <div id="projectDetailView" class="slide-in">
+            <!-- Project overview will be injected here -->
+            <div id="project-overview" class="project-overview"></div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="projectTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-content" type="button" role="tab">
+                        <span class="material-icons align-middle me-2">task</span>Tasks
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ideas-tab" data-bs-toggle="tab" data-bs-target="#ideas-content" type="button" role="tab">
+                        <span class="material-icons align-middle me-2">lightbulb</span>Ideas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-content" type="button" role="tab">
+                        <span class="material-icons align-middle me-2">analytics</span>Analytics
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="projectTabContent">
+                <!-- Tasks Content -->
+                <div class="tab-pane fade show active" id="tasks-content" role="tabpanel">
+                    <div class="row" id="task-board">
+                        <!-- To-Do -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <h4 class="column-header">To-Do</h4>
+                            <div id="todo-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                        </div>
+                        <!-- In-Progress -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <h4 class="column-header">In-Progress</h4>
+                            <div id="inprogress-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                        </div>
+                        <!-- Done -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <h4 class="column-header">Done</h4>
+                            <div id="done-column" class="task-column" ondragover="event.preventDefault()" ondrop="drop(event)"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Ideas Content -->
+                <div class="tab-pane fade" id="ideas-content" role="tabpanel">
+                     <div class="d-flex justify-content-between align-items-center mb-4">
+                         <h4 class="mb-0">Captured Ideas</h4>
+                         <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addIdeaModal">
+                            <span class="material-icons align-middle me-2">lightbulb</span>Add Idea
+                         </button>
+                    </div>
+                    <ul class="list-group" id="idea-list">
+                       <!-- Ideas will be injected here -->
+                    </ul>
+                </div>
+                <!-- Analytics Content -->
+                <div class="tab-pane fade" id="analytics-content" role="tabpanel">
+                    <div class="analytics-container">
+                        <div class="row">
+                            <div class="col-lg-6 mb-4">
+                                <div class="chart-container">
+                                    <canvas id="taskStatusChart"></canvas>
+                                </div>
+                            </div>
+                             <div class="col-lg-6 mb-4">
+                                <div class="chart-container">
+                                    <canvas id="taskPriorityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+
+    <!-- Add Project Modal -->
+    <div class="modal fade" id="addProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Create New Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addProjectForm">
+                        <div class="mb-3">
+                            <label for="projectName" class="form-label">Project Name</label>
+                            <input type="text" class="form-control" id="projectName" placeholder="Enter project name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="projectDescription" rows="3" placeholder="Describe your project"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectDueDate" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="projectDueDate">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <span class="material-icons align-middle me-2">create</span>Create Project
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Task Modal -->
+    <div class="modal fade" id="taskModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="taskModalTitle">Add Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <input type="hidden" id="taskId">
+                        <div class="mb-3">
+                            <label for="taskTitle" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="taskTitle" placeholder="Enter task title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="taskDetails" class="form-label">Details</label>
+                            <textarea class="form-control" id="taskDetails" rows="3" placeholder="Describe the task"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="taskPriority" class="form-label">Priority</label>
+                                <select id="taskPriority" class="form-select">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="taskDeadline" class="form-label">Deadline</label>
+                                <input type="date" class="form-control" id="taskDeadline">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <span class="material-icons align-middle me-2">save</span>Save Task
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+     <!-- Add Idea Modal -->
+    <div class="modal fade" id="addIdeaModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add New Idea</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addIdeaForm">
+                        <div class="mb-3">
+                            <label for="ideaTitle" class="form-label">Idea</label>
+                            <input type="text" class="form-control" id="ideaTitle" placeholder="What's your brilliant idea?" required>
+                        </div>
+                         <div class="mb-3">
+                            <label for="ideaDescription" class="form-label">Description (Optional)</label>
+                            <textarea class="form-control" id="ideaDescription" rows="3" placeholder="Add more details about your idea"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <span class="material-icons align-middle me-2">lightbulb</span>Capture Idea
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // State
+            let projects = [];
+            let currentProjectId = null;
+            let currentTask = null;
+            let taskStatusChart, taskPriorityChart;
+            let currentUser = null;
+
+            // DOM Elements
+            const projectList = document.getElementById('project-list');
+            const addProjectForm = document.getElementById('addProjectForm');
+            const projectSearch = document.getElementById('projectSearch');
+            const dashboardView = document.getElementById('dashboardView');
+            const projectDetailView = document.getElementById('projectDetailView');
+            const projectOverview = document.getElementById('project-overview');
+            const addProjectModal = new bootstrap.Modal(document.getElementById('addProjectModal'));
+            const taskModal = new bootstrap.Modal(document.getElementById('taskModal'));
+            const addIdeaModal = new bootstrap.Modal(document.getElementById('addIdeaModal'));
+            
+            // --- Authentication State Management ---
+            const initializeAuth = () => {
+                window.firebaseAuth.onAuthStateChanged(window.firebaseAuth.auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        updateUserInterface(user);
+                        setupRealtimeListener();
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                });
+            };
+
+            const updateUserInterface = (user) => {
+                const userNameElement = document.getElementById('userName');
+                const userEmailElement = document.getElementById('userEmail');
+                
+                // Get user display name or email
+                const displayName = user.displayName || user.email.split('@')[0];
+                userNameElement.textContent = displayName;
+                userEmailElement.textContent = user.email;
+            };
+
+            // --- Firebase Database Functions ---
+            const saveProjects = async () => {
+                if (!currentUser) return;
+                
+                try {
+                    // Ensure projects is an array and validate data structure
+                    if (!Array.isArray(projects)) {
+                        projects = [];
+                    }
+                    
+                    // Clean and validate each project before saving
+                    const cleanProjects = projects.map(project => {
+                        if (!project || !project.id) return null;
+                        
+                        return {
+                            id: project.id,
+                            name: project.name || 'Untitled Project',
+                            description: project.description || '',
+                            dueDate: project.dueDate || '',
+                            tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id).map(task => ({
+                                id: task.id,
+                                title: task.title || 'Untitled Task',
+                                details: task.details || '',
+                                priority: task.priority || 'medium',
+                                status: task.status || 'todo',
+                                deadline: task.deadline || ''
+                            })) : [],
+                            ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id).map(idea => ({
+                                id: idea.id,
+                                title: idea.title || 'Untitled Idea',
+                                description: idea.description || ''
+                            })) : []
+                        };
+                    }).filter(project => project !== null);
+                    
+                    const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
+                    await window.firebaseDB.set(projectsRef, cleanProjects);
+                } catch (error) {
+                    console.error('Error saving projects:', error);
+                    alert('Error saving data. Please try again.');
+                }
+            };
+
+            const loadProjects = async () => {
+                if (!currentUser) return;
+                
+                try {
+                    const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
+                    const snapshot = await window.firebaseDB.get(projectsRef);
+                    if (snapshot.exists()) {
+                        projects = snapshot.val();
+                    } else {
+                        projects = [];
+                    }
+                    renderProjects();
+                } catch (error) {
+                    console.error('Error loading projects:', error);
+                    alert('Error loading data. Please refresh the page.');
+                }
+            };
+
+            const setupRealtimeListener = () => {
+                if (!currentUser) return;
+                
+                const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
+                window.firebaseDB.onValue(projectsRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        // Ensure data is an array and validate each project
+                        if (Array.isArray(data)) {
+                            projects = data.map(project => {
+                                // Ensure each project has required properties
+                                return {
+                                    id: project.id || `proj_${Date.now()}_${Math.random()}`,
+                                    name: project.name || 'Untitled Project',
+                                    description: project.description || '',
+                                    dueDate: project.dueDate || '',
+                                    tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id) : [],
+                                    ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id) : []
+                                };
+                            });
+                        } else {
+                            // If data is not an array, convert it to array format
+                            projects = [];
+                            if (data && typeof data === 'object') {
+                                Object.keys(data).forEach(key => {
+                                    const project = data[key];
+                                    if (project && project.id) {
+                                        projects.push({
+                                            id: project.id,
+                                            name: project.name || 'Untitled Project',
+                                            description: project.description || '',
+                                            dueDate: project.dueDate || '',
+                                            tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id) : [],
+                                            ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id) : []
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                        renderProjects();
+                        if (currentProjectId) {
+                            renderProjectDetail();
+                        }
+                    } else {
+                        projects = [];
+                        renderProjects();
+                    }
+                });
+            };
+            
+            // --- Theme Toggler ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            const setInitialTheme = () => {
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme) {
+                    document.documentElement.setAttribute('data-bs-theme', storedTheme);
+                    if (storedTheme === 'dark') {
+                        themeToggle.checked = true;
+                        themeIcon.textContent = 'dark_mode';
+                    }
+                }
+            };
+            
+            themeToggle.addEventListener('change', () => {
+                if (themeToggle.checked) {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    themeIcon.textContent = 'dark_mode';
+                } else {
+                    document.documentElement.setAttribute('data-bs-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    themeIcon.textContent = 'light_mode';
+                }
+                 if(currentProjectId) renderAnalytics();
+            });
+
+
+            // --- Core Functions ---
+            const findProject = (id) => projects.find(p => p.id === id);
+
+            const calculateProgress = (project) => {
+                // Ensure project and tasks exist
+                if (!project || !project.tasks || !Array.isArray(project.tasks)) {
+                    return 0;
+                }
+                const totalTasks = project.tasks.length;
+                if (totalTasks === 0) return 0;
+                const completedTasks = project.tasks.filter(t => t && t.status === 'done').length;
+                return Math.round((completedTasks / totalTasks) * 100);
+            };
+
+            const getStatusBadge = (progress) => {
+                if (progress === 100) return `<span class="badge rounded-pill bg-success status-badge">Completed</span>`;
+                if (progress > 0) return `<span class="badge rounded-pill bg-info status-badge">In Progress</span>`;
+                return `<span class="badge rounded-pill bg-secondary status-badge">Not Started</span>`;
+            };
+            
+             const getPriorityBadge = (priority) => {
+                switch(priority) {
+                    case 'high': return `<span class="badge bg-danger">High</span>`;
+                    case 'medium': return `<span class="badge bg-warning text-dark">Medium</span>`;
+                    case 'low': return `<span class="badge bg-success">Low</span>`;
+                    default: return '';
+                }
+            };
+
+            // --- Render Functions ---
+            const renderProjects = (filter = '') => {
+                projectList.innerHTML = '';
+                // Ensure projects is an array and filter properly
+                if (!Array.isArray(projects)) {
+                    projects = [];
+                }
+                const filteredProjects = projects.filter(p => p && p.name && p.name.toLowerCase().includes(filter.toLowerCase()));
+                
+                if (filteredProjects.length === 0) {
+                     projectList.innerHTML = `
+                        <div class="col-12">
+                            <div class="empty-state">
+                                <span class="material-icons">folder_open</span>
+                                <h4>No projects found</h4>
+                                <p class="mb-3">${filter ? 'Try adjusting your search terms.' : 'Create your first project to get started!'}</p>
+                                ${!filter ? '<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProjectModal">Create Project</button>' : ''}
+                            </div>
+                        </div>`;
+                     return;
+                }
+
+                filteredProjects.forEach(project => {
+                    // Ensure project has required properties
+                    if (!project.tasks) project.tasks = [];
+                    if (!project.ideas) project.ideas = [];
+                    
+                    const progress = calculateProgress(project);
+                    const card = document.createElement('div');
+                    card.className = 'col-xl-4 col-lg-6 col-md-6';
+                    card.innerHTML = `
+                        <div class="card project-card h-100" data-project-id="${project.id}">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title mb-1 fw-bold">${project.name || 'Untitled Project'}</h5>
+                                    ${getStatusBadge(progress)}
+                                </div>
+                                <p class="card-text text-muted mb-3 flex-grow-1">${project.description ? project.description.substring(0, 100) + (project.description.length > 100 ? '...' : '') : 'No description provided'}</p>
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="fw-medium">Progress</small>
+                                        <small class="fw-bold">${progress}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar" role="progressbar" style="width: ${progress}%;" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center text-muted small">
+                                    <span class="d-flex align-items-center">
+                                        <span class="material-icons me-1" style="font-size: 1rem;">pending</span>
+                                        ${project.tasks.filter(t => t && t.status !== 'done').length} Pending
+                                    </span>
+                                    <span class="d-flex align-items-center">
+                                        <span class="material-icons me-1" style="font-size: 1rem;">lightbulb</span>
+                                        ${project.ideas.length} Ideas
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    projectList.appendChild(card);
+                });
+            };
+
+            const renderProjectDetail = () => {
+                const project = findProject(currentProjectId);
+                if (!project) return;
+                
+                // Ensure project has required properties
+                if (!project.tasks) project.tasks = [];
+                if (!project.ideas) project.ideas = [];
+                
+                const progress = calculateProgress(project);
+                projectOverview.innerHTML = `
+                     <div class="d-flex justify-content-between align-items-start flex-wrap">
+                        <div class="flex-grow-1">
+                            <a href="#" onclick="showDashboard()" class="back-link">
+                                <span class="material-icons">arrow_back</span>
+                                Back to Projects
+                            </a>
+                            <h1 class="project-title">${project.name || 'Untitled Project'}</h1>
+                            <p class="project-description">${project.description || 'No description provided'}</p>
+                            <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center">
+                                    <span class="material-icons me-2 text-primary">schedule</span>
+                                    <span class="fw-medium">${project.tasks.length} Total Tasks</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="material-icons me-2 text-success">check_circle</span>
+                                    <span class="fw-medium">${project.tasks.filter(t => t && t.status === 'done').length} Completed</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="material-icons me-2 text-warning">lightbulb</span>
+                                    <span class="fw-medium">${project.ideas.length} Ideas</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3 mt-md-0">
+                            <button class="btn btn-outline-primary" onclick="openTaskModal()">
+                                <span class="material-icons align-middle me-2">add_task</span>Add Task
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteProject('${project.id}')">
+                                <span class="material-icons align-middle me-2">delete</span>Delete
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0 fw-bold">Overall Progress</h5>
+                            <span class="fw-bold text-primary">${progress}%</span>
+                        </div>
+                        <div class="progress" style="height: 12px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${progress}%;" aria-valuenow="${progress}"></div>
+                        </div>
+                    </div>
+                `;
+                
+                renderTasks();
+                renderIdeas();
+                renderAnalytics();
+            };
+
+            const renderTasks = () => {
+                const project = findProject(currentProjectId);
+                if (!project) return;
+                
+                // Ensure project has tasks array
+                if (!project.tasks) project.tasks = [];
+                
+                const columns = {
+                    todo: document.getElementById('todo-column'),
+                    inprogress: document.getElementById('inprogress-column'),
+                    done: document.getElementById('done-column')
+                };
+                
+                Object.values(columns).forEach(col => col.innerHTML = '');
+                
+                // Add "Add Task" button to To-Do column
+                columns.todo.innerHTML = `
+                    <button class="btn btn-primary w-100 mb-3" onclick="openTaskModal()">
+                        <span class="material-icons align-middle me-2">add</span>Add Task
+                    </button>
+                `;
+
+                if (project.tasks.length === 0) {
+                    columns.todo.innerHTML += `
+                        <div class="text-center text-muted py-4">
+                            <span class="material-icons mb-2" style="font-size: 3rem; opacity: 0.5;">task_alt</span>
+                            <p class="mb-0">No tasks yet. Add your first task!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                project.tasks.forEach(task => {
+                    // Skip invalid tasks
+                    if (!task || !task.id) return;
+                    
+                    const taskCard = document.createElement('div');
+                    taskCard.className = 'card task-card mb-3';
+                    taskCard.draggable = true;
+                    taskCard.id = task.id;
+                    taskCard.dataset.taskId = task.id;
+                    taskCard.innerHTML = `
+                        <div class="card-body">
+                             <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title fw-bold mb-0">${task.title || 'Untitled Task'}</h6>
+                                ${getPriorityBadge(task.priority)}
+                            </div>
+                            ${task.details ? `<p class="card-text small text-muted mb-3">${task.details.substring(0,80)}${task.details.length > 80 ? '...' : ''}</p>` : ''}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    ${task.deadline ? `
+                                        <span class="material-icons me-1 text-muted" style="font-size: 1rem;">event</span>
+                                        <small class="text-muted">${task.deadline}</small>
+                                    ` : ''}
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="openTaskModal('${task.id}')" title="Edit">
+                                        <span class="material-icons" style="font-size: 1rem;">edit</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask('${task.id}')" title="Delete">
+                                        <span class="material-icons" style="font-size: 1rem;">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    taskCard.addEventListener('dragstart', dragStart);
+                    
+                    // Ensure task has a valid status
+                    const status = task.status || 'todo';
+                    const columnKey = status.replace('-', '');
+                    if (columns[columnKey]) {
+                        columns[columnKey].appendChild(taskCard);
+                    } else {
+                        // Fallback to todo column
+                        columns.todo.appendChild(taskCard);
+                    }
+                });
+            };
+            
+            const renderIdeas = () => {
+                const project = findProject(currentProjectId);
+                if (!project) return;
+                
+                // Ensure project has ideas array
+                if (!project.ideas) project.ideas = [];
+                
+                const ideaList = document.getElementById('idea-list');
+                ideaList.innerHTML = '';
+
+                if(project.ideas.length === 0){
+                    ideaList.innerHTML = `
+                        <div class="text-center text-muted py-5">
+                            <span class="material-icons mb-3" style="font-size: 4rem; opacity: 0.5;">lightbulb_outline</span>
+                            <h5>No ideas captured yet</h5>
+                            <p class="mb-3">Start capturing your brilliant ideas to turn them into actionable tasks!</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addIdeaModal">
+                                <span class="material-icons align-middle me-2">add</span>Add Your First Idea
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                project.ideas.forEach(idea => {
+                    // Skip invalid ideas
+                    if (!idea || !idea.id) return;
+                    
+                    const item = document.createElement('li');
+                    item.className = 'list-group-item d-flex justify-content-between align-items-start';
+                    item.innerHTML = `
+                        <div class="flex-grow-1 me-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="material-icons text-warning me-2">lightbulb</span>
+                                <h6 class="mb-0 fw-bold">${idea.title || 'Untitled Idea'}</h6>
+                            </div>
+                            ${idea.description ? `<p class="mb-0 text-muted small">${idea.description}</p>` : ''}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-success" onclick="promoteIdeaToTask('${idea.id}')" title="Promote to Task">
+                                <span class="material-icons align-middle me-1" style="font-size: 1rem;">arrow_upward</span>
+                                Promote
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteIdea('${idea.id}')" title="Delete">
+                                <span class="material-icons align-middle" style="font-size: 1rem;">delete</span>
+                            </button>
+                        </div>
+                    `;
+                    ideaList.appendChild(item);
+                });
+            };
+            
+            const renderAnalytics = () => {
+                const project = findProject(currentProjectId);
+                if (!project) return;
+                
+                // Ensure project has tasks array
+                if (!project.tasks) project.tasks = [];
+                
+                const theme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+                const gridColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const textColor = theme === 'dark' ? '#f8f9fa' : '#212529';
+
+
+                // Task Status Pie Chart
+                const statusCounts = { todo: 0, inprogress: 0, done: 0 };
+                project.tasks.forEach(task => {
+                    if (task && task.status) {
+                        const status = task.status.replace('-','');
+                        if (statusCounts.hasOwnProperty(status)) {
+                            statusCounts[status]++;
+                        }
+                    }
+                });
+                
+                const taskStatusCtx = document.getElementById('taskStatusChart').getContext('2d');
+                if (taskStatusChart) taskStatusChart.destroy();
+                taskStatusChart = new Chart(taskStatusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['To-Do', 'In Progress', 'Done'],
+                        datasets: [{
+                            data: [statusCounts.todo, statusCounts.inprogress, statusCounts.done],
+                            backgroundColor: ['#6c757d', '#0dcaf0', '#198754'],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top', labels: { color: textColor } },
+                            title: { display: true, text: 'Task Status Distribution', color: textColor }
+                        }
+                    }
+                });
+
+                // Task Priority Bar Chart
+                const priorityCounts = { low: 0, medium: 0, high: 0 };
+                project.tasks.forEach(task => {
+                    if (task && task.priority && priorityCounts.hasOwnProperty(task.priority)) {
+                        priorityCounts[task.priority]++;
+                    }
+                });
+
+                const taskPriorityCtx = document.getElementById('taskPriorityChart').getContext('2d');
+                if (taskPriorityChart) taskPriorityChart.destroy();
+                taskPriorityChart = new Chart(taskPriorityCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Low', 'Medium', 'High'],
+                        datasets: [{
+                            label: 'Number of Tasks',
+                            data: [priorityCounts.low, priorityCounts.medium, priorityCounts.high],
+                            backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                         scales: {
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } },
+                            x: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: 'Tasks by Priority', color: textColor }
+                        }
+                    }
+                });
+            };
+
+            // --- View Management ---
+            window.showDashboard = () => {
+                currentProjectId = null;
+                dashboardView.style.display = 'block';
+                projectDetailView.style.display = 'none';
+                document.getElementById('projectTab').firstElementChild.firstElementChild.click();
+                renderProjects();
+            };
+
+            const showProjectDetail = (projectId) => {
+                currentProjectId = projectId;
+                dashboardView.style.display = 'none';
+                projectDetailView.style.display = 'block';
+                renderProjectDetail();
+            };
+
+            // --- Event Handlers ---
+            addProjectForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newProject = {
+                    id: `proj_${Date.now()}`,
+                    name: document.getElementById('projectName').value,
+                    description: document.getElementById('projectDescription').value,
+                    dueDate: document.getElementById('projectDueDate').value,
+                    tasks: [],
+                    ideas: []
+                };
+                projects.unshift(newProject);
+                await saveProjects();
+                addProjectForm.reset();
+                addProjectModal.hide();
+            });
+
+            projectSearch.addEventListener('input', (e) => {
+                renderProjects(e.target.value);
+            });
+
+            projectList.addEventListener('click', (e) => {
+                const card = e.target.closest('.project-card');
+                if (card) {
+                    showProjectDetail(card.dataset.projectId);
+                }
+            });
+            
+            document.getElementById('taskForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const project = findProject(currentProjectId);
+                const taskId = document.getElementById('taskId').value;
+
+                const taskData = {
+                    title: document.getElementById('taskTitle').value,
+                    details: document.getElementById('taskDetails').value,
+                    priority: document.getElementById('taskPriority').value,
+                    deadline: document.getElementById('taskDeadline').value
+                };
+
+                if (taskId) { // Editing existing task
+                    const taskIndex = project.tasks.findIndex(t => t.id === taskId);
+                    project.tasks[taskIndex] = { ...project.tasks[taskIndex], ...taskData };
+                } else { // New task
+                    const newTask = {
+                        id: `task_${Date.now()}`,
+                        status: 'todo',
+                        ...taskData
+                    };
+                    project.tasks.push(newTask);
+                }
+                
+                await saveProjects();
+                taskModal.hide();
+            });
+
+            document.getElementById('addIdeaForm').addEventListener('submit', async e => {
+                 e.preventDefault();
+                 const project = findProject(currentProjectId);
+                 const newIdea = {
+                    id: `idea_${Date.now()}`,
+                    title: document.getElementById('ideaTitle').value,
+                    description: document.getElementById('ideaDescription').value,
+                 }
+                 project.ideas.unshift(newIdea);
+                 await saveProjects();
+                 document.getElementById('addIdeaForm').reset();
+                 addIdeaModal.hide();
+            });
+            
+            // --- Global Functions for inline onclick ---
+            window.openTaskModal = (taskId = null) => {
+                const form = document.getElementById('taskForm');
+                form.reset();
+                document.getElementById('taskId').value = '';
+                
+                if (taskId) {
+                    document.getElementById('taskModalTitle').textContent = 'Edit Task';
+                    const project = findProject(currentProjectId);
+                    const task = project.tasks.find(t => t.id === taskId);
+                    document.getElementById('taskId').value = task.id;
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDetails').value = task.details;
+                    document.getElementById('taskPriority').value = task.priority;
+                    document.getElementById('taskDeadline').value = task.deadline;
+                } else {
+                    document.getElementById('taskModalTitle').textContent = 'Add Task';
+                }
+                
+                taskModal.show();
+            };
+             
+            window.deleteTask = async (taskId) => {
+                if (confirm('Are you sure you want to delete this task?')) {
+                    const project = findProject(currentProjectId);
+                    project.tasks = project.tasks.filter(t => t.id !== taskId);
+                    await saveProjects();
+                }
+            };
+            
+            window.deleteProject = async (projectId) => {
+                if (confirm('Are you sure you want to delete this entire project? This action cannot be undone.')) {
+                    projects = projects.filter(p => p.id !== projectId);
+                    await saveProjects();
+                    showDashboard();
+                }
+            };
+
+            window.deleteIdea = async (ideaId) => {
+                 const project = findProject(currentProjectId);
+                 project.ideas = project.ideas.filter(i => i.id !== ideaId);
+                 await saveProjects();
+            };
+
+            window.promoteIdeaToTask = async (ideaId) => {
+                const project = findProject(currentProjectId);
+                const idea = project.ideas.find(i => i.id === ideaId);
+                
+                const newTask = {
+                    id: `task_${Date.now()}`,
+                    title: idea.title,
+                    details: idea.description,
+                    priority: 'medium',
+                    status: 'todo',
+                    deadline: '',
+                };
+                
+                project.tasks.push(newTask);
+                project.ideas = project.ideas.filter(i => i.id !== ideaId);
+
+                await saveProjects();
+                // Switch to tasks tab
+                document.getElementById('tasks-tab').click();
+            };
+
+
+            // --- Drag and Drop Logic ---
+            const dragStart = (e) => {
+                e.dataTransfer.setData('text/plain', e.target.id);
+                setTimeout(() => e.target.classList.add('dragging'), 0);
+            };
+
+            const dragEnd = (e) => {
+                e.target.classList.remove('dragging');
+            };
+
+            document.querySelectorAll('.task-column').forEach(col => {
+                col.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const draggingCard = document.querySelector('.dragging');
+                    if (draggingCard) {
+                        col.classList.add('drag-over');
+                    }
+                });
+                col.addEventListener('dragleave', (e) => {
+                     col.classList.remove('drag-over');
+                });
+                col.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    col.classList.remove('drag-over');
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    const droppedCard = document.getElementById(taskId);
+                    const newStatus = col.id.replace('-column', '');
+                    
+                    const project = findProject(currentProjectId);
+                    const task = project.tasks.find(t => t.id === taskId);
+                    task.status = newStatus;
+                    
+                    await saveProjects();
+                });
+                col.addEventListener('dragend', dragEnd);
+            });
+
+
+            // --- Authentication Functions ---
+            window.logout = async () => {
+                try {
+                    await window.firebaseAuth.signOut(window.firebaseAuth.auth);
+                    // Redirect will be handled by onAuthStateChanged
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    alert('Error signing out. Please try again.');
+                }
+            };
+
+            window.showUserProfile = () => {
+                // TODO: Implement user profile modal
+                alert('User profile feature coming soon!');
+            };
+
+            window.showSettings = () => {
+                // TODO: Implement settings modal
+                alert('Settings feature coming soon!');
+            };
+
+            // --- Initial Load ---
+            setInitialTheme();
+            initializeAuth(); // Initialize authentication state
+            showDashboard();
+        });
+    </script>
+</body>
+</html>
