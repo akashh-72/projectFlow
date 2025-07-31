@@ -634,8 +634,14 @@
         <div id="dashboardView" class="fade-in">
             <div class="dashboard-header d-flex justify-content-between align-items-center">
                 <h1 class="h2 mb-0">My Projects</h1>
-                <div class="search-container">
-                    <input type="text" id="projectSearch" class="form-control" placeholder="Search projects...">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="search-container me-2">
+                        <input type="text" id="projectSearch" class="form-control" placeholder="Search projects...">
+                    </div>
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="text" class="form-control" id="joinProjectId" placeholder="Enter Project ID to join">
+                        <button class="btn btn-outline-primary" id="joinProjectBtn" type="button">Join</button>
+                    </div>
                 </div>
             </div>
             <div id="project-list" class="row g-4">
@@ -741,6 +747,10 @@
                         <div class="mb-3">
                             <label for="projectDueDate" class="form-label">Due Date</label>
                             <input type="date" class="form-control" id="projectDueDate">
+                        </div>
+                        <div class="mb-3">
+                            <label for="shareProjectId" class="form-label">Share Project ID <span class="text-muted small">(optional)</span></label>
+                            <input type="text" class="form-control" id="shareProjectId" placeholder="Enter a Project ID to join or leave blank to create new">
                         </div>
                         <button type="submit" class="btn btn-primary w-100">
                             <span class="material-icons align-middle me-2">create</span>Create Project
@@ -851,6 +861,7 @@
                     if (user) {
                         currentUser = user;
                         updateUserInterface(user);
+                        loadProjects(); // <-- Ensure projects are loaded after login
                         setupRealtimeListener();
                     } else {
                         window.location.href = 'login.html';
@@ -868,59 +879,102 @@
                 userEmailElement.textContent = user.email;
             };
 
-            // --- Firebase Database Functions ---
-            const saveProjects = async () => {
-                if (!currentUser) return;
-                
-                try {
-                    // Ensure projects is an array and validate data structure
-                    if (!Array.isArray(projects)) {
-                        projects = [];
-                    }
-                    
-                    // Clean and validate each project before saving
-                    const cleanProjects = projects.map(project => {
-                        if (!project || !project.id) return null;
-                        
-                        return {
-                            id: project.id,
-                            name: project.name || 'Untitled Project',
-                            description: project.description || '',
-                            dueDate: project.dueDate || '',
-                            tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id).map(task => ({
-                                id: task.id,
-                                title: task.title || 'Untitled Task',
-                                details: task.details || '',
-                                priority: task.priority || 'medium',
-                                status: task.status || 'todo',
-                                deadline: task.deadline || ''
-                            })) : [],
-                            ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id).map(idea => ({
-                                id: idea.id,
-                                title: idea.title || 'Untitled Idea',
-                                description: idea.description || ''
-                            })) : []
-                        };
-                    }).filter(project => project !== null);
-                    
-                    const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
-                    await window.firebaseDB.set(projectsRef, cleanProjects);
-                } catch (error) {
-                    console.error('Error saving projects:', error);
-                    alert('Error saving data. Please try again.');
-                }
-            };
+            // Helper to get user info
+            function getUserInfo(user) {
+                return {
+                    uid: user.uid,
+                    name: user.displayName || (user.email ? user.email.split('@')[0] : 'Unknown'),
+                    email: user.email || ''
+                };
+            }
 
+            // --- Shared Project Logic ---
+            // Helper: get shared project ref
+            function getSharedProjectRef(projectId) {
+                return window.firebaseDB.ref(window.firebaseDB.database, `sharedProjects/${projectId}`);
+            }
+            // Helper: get user project list ref
+            function getUserProjectsRef() {
+                return window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
+            }
+            // --- Create Project ---
+            addProjectForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const shareProjectId = document.getElementById('shareProjectId').value.trim();
+                if (shareProjectId) {
+                    // Try to find shared project
+                    const sharedRef = window.firebaseDB.ref(window.firebaseDB.database, `sharedProjects/${shareProjectId}`);
+                    const sharedSnap = await window.firebaseDB.get(sharedRef);
+                    if (sharedSnap.exists()) {
+                        // Add reference to user's project list
+                        const userProjectsRef = getUserProjectsRef();
+                        const userProjectsSnap = await window.firebaseDB.get(userProjectsRef);
+                        let userProjects = userProjectsSnap.exists() ? userProjectsSnap.val() : [];
+                        if (!Array.isArray(userProjects)) userProjects = Object.values(userProjects);
+                        if (!userProjects.some(p => p.id === shareProjectId)) {
+                            userProjects.unshift({ id: shareProjectId });
+                            await window.firebaseDB.set(userProjectsRef, userProjects);
+                        }
+                        addProjectForm.reset();
+                        addProjectModal.hide();
+                        alert('Joined shared project successfully!');
+                        loadProjects(); // <-- Refresh dashboard after joining
+                        return;
+                    } else {
+                        alert('No project found with that ID.');
+                        return;
+                    }
+                }
+                // Normal new project creation
+                const userInfo = getUserInfo(currentUser);
+                const now = Date.now();
+                const newProject = {
+                    id: `proj_${now}`,
+                    name: document.getElementById('projectName').value,
+                    description: document.getElementById('projectDescription').value,
+                    dueDate: document.getElementById('projectDueDate').value,
+                    createdBy: userInfo,
+                    contributors: [userInfo],
+                    createdAt: now,
+                    activity: [{
+                        type: 'created',
+                        target: 'project',
+                        targetId: `proj_${now}`,
+                        user: userInfo,
+                        timestamp: now,
+                        description: 'Project created'
+                    }],
+                    tasks: [],
+                    ideas: []
+                };
+                // Save to sharedProjects
+                const sharedRef = getSharedProjectRef(newProject.id);
+                await window.firebaseDB.set(sharedRef, newProject);
+                // Add reference to user's project list
+                const userProjectsRef = getUserProjectsRef();
+                const userProjectsSnap = await window.firebaseDB.get(userProjectsRef);
+                let userProjects = userProjectsSnap.exists() ? userProjectsSnap.val() : [];
+                if (!Array.isArray(userProjects)) userProjects = Object.values(userProjects);
+                userProjects.unshift({ id: newProject.id });
+                await window.firebaseDB.set(userProjectsRef, userProjects);
+                addProjectForm.reset();
+                addProjectModal.hide();
+                loadProjects(); // <-- Refresh dashboard after creating
+            });
+            // --- Load Projects List ---
             const loadProjects = async () => {
                 if (!currentUser) return;
-                
                 try {
-                    const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
-                    const snapshot = await window.firebaseDB.get(projectsRef);
-                    if (snapshot.exists()) {
-                        projects = snapshot.val();
-                    } else {
-                        projects = [];
+                    const userProjectsRef = getUserProjectsRef();
+                    const userProjectsSnap = await window.firebaseDB.get(userProjectsRef);
+                    let userProjects = userProjectsSnap.exists() ? userProjectsSnap.val() : [];
+                    if (!Array.isArray(userProjects)) userProjects = Object.values(userProjects);
+                    // Load all shared project data
+                    projects = [];
+                    for (const ref of userProjects) {
+                        if (!ref || !ref.id) continue;
+                        const sharedSnap = await window.firebaseDB.get(getSharedProjectRef(ref.id));
+                        if (sharedSnap.exists()) projects.push(sharedSnap.val());
                     }
                     renderProjects();
                 } catch (error) {
@@ -928,57 +982,83 @@
                     alert('Error loading data. Please refresh the page.');
                 }
             };
-
-            const setupRealtimeListener = () => {
+            // --- Save Project (update sharedProjects) ---
+            const saveProjects = async () => {
                 if (!currentUser) return;
-                
-                const projectsRef = window.firebaseDB.ref(window.firebaseDB.database, `users/${currentUser.uid}/projects`);
-                window.firebaseDB.onValue(projectsRef, (snapshot) => {
+                try {
+                    for (const project of projects) {
+                        if (!project || !project.id) continue;
+                        const sharedRef = getSharedProjectRef(project.id);
+                        await window.firebaseDB.set(sharedRef, project);
+                    }
+                } catch (error) {
+                    console.error('Error saving projects:', error);
+                    alert('Error saving data. Please try again.');
+                }
+            };
+            // --- Realtime Listener for Current Project ---
+            let sharedProjectListener = null;
+            function setupRealtimeListener() {
+                if (!currentUser) return;
+                if (sharedProjectListener) sharedProjectListener.off();
+                if (!currentProjectId) return;
+                const sharedRef = getSharedProjectRef(currentProjectId);
+                window.firebaseDB.onValue(sharedRef, (snapshot) => {
                     if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        // Ensure data is an array and validate each project
-                        if (Array.isArray(data)) {
-                            projects = data.map(project => {
-                                // Ensure each project has required properties
-                                return {
-                                    id: project.id || `proj_${Date.now()}_${Math.random()}`,
-                                    name: project.name || 'Untitled Project',
-                                    description: project.description || '',
-                                    dueDate: project.dueDate || '',
-                                    tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id) : [],
-                                    ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id) : []
-                                };
-                            });
-                        } else {
-                            // If data is not an array, convert it to array format
-                            projects = [];
-                            if (data && typeof data === 'object') {
-                                Object.keys(data).forEach(key => {
-                                    const project = data[key];
-                                    if (project && project.id) {
-                                        projects.push({
-                                            id: project.id,
-                                            name: project.name || 'Untitled Project',
-                                            description: project.description || '',
-                                            dueDate: project.dueDate || '',
-                                            tasks: Array.isArray(project.tasks) ? project.tasks.filter(task => task && task.id) : [],
-                                            ideas: Array.isArray(project.ideas) ? project.ideas.filter(idea => idea && idea.id) : []
-                                        });
-                                    }
-                                });
-                            }
-                        }
-                        renderProjects();
-                        if (currentProjectId) {
-                            renderProjectDetail();
-                        }
-                    } else {
-                        projects = [];
-                        renderProjects();
+                        const project = snapshot.val();
+                        // Update in-memory project
+                        const idx = projects.findIndex(p => p.id === project.id);
+                        if (idx !== -1) projects[idx] = project;
+                        else projects.unshift(project);
+                        renderProjectDetail();
                     }
                 });
-            };
-            
+                sharedProjectListener = sharedRef;
+            }
+            // --- Join Shared Project from Dashboard ---
+            const joinProjectBtn = document.getElementById('joinProjectBtn');
+            if (joinProjectBtn) {
+                joinProjectBtn.addEventListener('click', async () => {
+                    const joinProjectId = document.getElementById('joinProjectId').value.trim();
+                    if (!joinProjectId) {
+                        alert('Please enter a Project ID to join.');
+                        return;
+                    }
+                    // Try to find shared project
+                    const sharedRef = window.firebaseDB.ref(window.firebaseDB.database, `sharedProjects/${joinProjectId}`);
+                    const sharedSnap = await window.firebaseDB.get(sharedRef);
+                    if (sharedSnap.exists()) {
+                        // Add reference to user's project list
+                        const userProjectsRef = getUserProjectsRef();
+                        const userProjectsSnap = await window.firebaseDB.get(userProjectsRef);
+                        let userProjects = userProjectsSnap.exists() ? userProjectsSnap.val() : [];
+                        if (!Array.isArray(userProjects)) userProjects = Object.values(userProjects);
+                        if (!userProjects.some(p => p.id === joinProjectId)) {
+                            userProjects.unshift({ id: joinProjectId });
+                            await window.firebaseDB.set(userProjectsRef, userProjects);
+                        }
+                        document.getElementById('joinProjectId').value = '';
+                        alert('Joined shared project successfully!');
+                        loadProjects();
+                        return;
+                    } else {
+                        alert('No project found with that ID.');
+                        return;
+                    }
+                });
+            }
+            // --- Find Project ---
+            const findProject = (id) => projects.find(p => p.id === id);
+            // --- On Project Card Click ---
+            projectList.addEventListener('click', (e) => {
+                const card = e.target.closest('.project-card');
+                if (card) {
+                    showProjectDetail(card.dataset.projectId);
+                    currentProjectId = card.dataset.projectId;
+                    setupRealtimeListener();
+                }
+            });
+
             // --- Theme Toggler ---
             const themeToggle = document.getElementById('theme-toggle');
             const themeIcon = document.getElementById('theme-icon');
@@ -1009,8 +1089,6 @@
 
 
             // --- Core Functions ---
-            const findProject = (id) => projects.find(p => p.id === id);
-
             const calculateProgress = (project) => {
                 // Ensure project and tasks exist
                 if (!project || !project.tasks || !Array.isArray(project.tasks)) {
@@ -1047,12 +1125,29 @@ const initializeSortable = () => {
             onEnd: async (evt) => {
                 const taskId = evt.item.dataset.taskId;
                 const newStatus = evt.to.id.replace('-column', '');
-                
                 const project = findProject(currentProjectId);
                 if (project) {
                     const task = project.tasks.find(t => t.id === taskId);
                     if (task && task.status !== newStatus) {
+                        const oldStatus = task.status;
                         task.status = newStatus;
+                        // Log activity for status change
+                        if (!project.activity) project.activity = [];
+                        const userInfo = getUserInfo(currentUser);
+                        const now = Date.now();
+                        project.activity.unshift({
+                            type: 'status-changed',
+                            target: 'task',
+                            targetId: taskId,
+                            user: userInfo,
+                            timestamp: now,
+                            description: `Task '${task.title}' moved from ${capitalizeStatus(oldStatus)} to ${capitalizeStatus(newStatus)}`
+                        });
+                        // Add contributor
+                        if (!project.contributors) project.contributors = [];
+                        if (!project.contributors.some(c => c.uid === userInfo.uid)) {
+                            project.contributors.push(userInfo);
+                        }
                         await saveProjects();
                         // The UI update will be handled by the realtime listener,
                         // but you can call renderProjectDetail() for an immediate refresh if needed.
@@ -1062,6 +1157,14 @@ const initializeSortable = () => {
         });
     });
 };
+// Helper to capitalize status for activity log
+function capitalizeStatus(status) {
+    if (!status) return '';
+    if (status === 'todo') return 'To-Do';
+    if (status === 'inprogress') return 'In Progress';
+    if (status === 'done') return 'Completed';
+    return status.charAt(0).toUpperCase() + status.slice(1);
+}
             // --- Render Functions ---
             const renderProjects = (filter = '') => {
                 projectList.innerHTML = '';
@@ -1126,15 +1229,53 @@ const initializeSortable = () => {
                 });
             };
 
+            // In renderProjectDetail, make Activity Feed foldable
             const renderProjectDetail = () => {
                 const project = findProject(currentProjectId);
                 if (!project) return;
-                
                 // Ensure project has required properties
                 if (!project.tasks) project.tasks = [];
                 if (!project.ideas) project.ideas = [];
-                
+                if (!project.contributors) project.contributors = [];
+                if (!project.activity) project.activity = [];
                 const progress = calculateProgress(project);
+                // Project creator and date
+                const creatorHtml = project.createdBy ? `<div class="text-muted small mb-2">Created by <span class="fw-bold">${project.createdBy.name || project.createdBy.email}</span> on ${project.createdAt ? new Date(project.createdAt).toLocaleString() : ''}</div>` : '';
+                // Contributors avatars/names
+                const contributorsHtml = project.contributors.length > 0 ? `
+                    <div class="mt-3">
+                        <h6 class="fw-bold mb-2">Contributors</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            ${project.contributors.map(c => `
+                                <span class="badge bg-secondary text-light p-2">
+                                    <span class="material-icons align-middle me-1" style="font-size:1.1em;vertical-align:-2px;">person</span>
+                                    ${c.name || c.email}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : '';
+                // Activity feed (foldable)
+                const activityCount = project.activity.length;
+                const showAll = window.__showAllActivityFeed === project.id;
+                const visibleActivities = showAll ? project.activity : project.activity.slice(0, 3);
+                const activityHtml = activityCount > 0 ? `
+                    <div class="mt-4">
+                        <h6 class="fw-bold mb-2">Activity Feed</h6>
+                        <ul class="list-group activity-feed" id="activityFeedList">
+                            ${visibleActivities.map(a => `
+                                <li class="list-group-item small">
+                                    <span class="fw-bold">${a.user?.name || a.user?.email || 'Unknown'}</span>
+                                    <span class="text-muted">${a.type}</span> 
+                                    <span>${a.target}</span>
+                                    <span class="text-muted">${a.description ? '— ' + a.description : ''}</span>
+                                    <span class="float-end text-muted" style="font-size:0.85em;">${a.timestamp ? new Date(a.timestamp).toLocaleString() : ''}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        ${activityCount > 3 ? `<button class="btn btn-link p-0 mt-2" id="toggleActivityFeedBtn">${showAll ? 'Show Less' : 'Show All Activity'}</button>` : ''}
+                    </div>
+                ` : '';
                 projectOverview.innerHTML = `
                      <div class="d-flex justify-content-between align-items-start flex-wrap">
                         <div class="flex-grow-1">
@@ -1143,6 +1284,7 @@ const initializeSortable = () => {
                                 Back to Projects
                             </a>
                             <h1 class="project-title">${project.name || 'Untitled Project'}</h1>
+                            ${creatorHtml}
                             <p class="project-description">${project.description || 'No description provided'}</p>
                             <div class="d-flex align-items-center gap-4 flex-wrap">
                                 <div class="d-flex align-items-center">
@@ -1158,13 +1300,20 @@ const initializeSortable = () => {
                                     <span class="fw-medium">${project.ideas.length} Ideas</span>
                                 </div>
                             </div>
+                            ${contributorsHtml}
                         </div>
-                        <div class="d-flex gap-2 mt-3 mt-md-0">
+                        <div class="d-flex flex-column gap-2 mt-3 mt-md-0 align-items-end">
                             <button class="btn btn-outline-primary" onclick="openTaskModal()">
                                 <span class="material-icons align-middle me-2">add_task</span>Add Task
                             </button>
+                            <button class="btn btn-outline-secondary" onclick="showShareProjectId()">
+                                <span class="material-icons align-middle me-2">share</span>Share Project
+                            </button>
                             <button class="btn btn-outline-danger" onclick="deleteProject('${project.id}')">
                                 <span class="material-icons align-middle me-2">delete</span>Delete
+                            </button>
+                            <button class="btn btn-success mt-2" onclick="openChatRoom('${project.id}')">
+                                <span class="material-icons align-middle me-2">chat</span>Chat Room
                             </button>
                         </div>
                     </div>
@@ -1174,11 +1323,25 @@ const initializeSortable = () => {
                             <span class="fw-bold text-primary">${progress}%</span>
                         </div>
                         <div class="progress" style="height: 12px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: ${progress}%;" aria-valuenow="${progress}"></div>
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${progress}%" aria-valuenow="${progress}"></div>
                         </div>
                     </div>
+                    ${activityHtml}
                 `;
-                
+                // Add toggle logic for activity feed
+                setTimeout(() => {
+                    const btn = document.getElementById('toggleActivityFeedBtn');
+                    if (btn) {
+                        btn.onclick = () => {
+                            if (window.__showAllActivityFeed === project.id) {
+                                window.__showAllActivityFeed = null;
+                            } else {
+                                window.__showAllActivityFeed = project.id;
+                            }
+                            renderProjectDetail();
+                        };
+                    }
+                }, 0);
                 renderTasks();
                 renderIdeas();
                 renderAnalytics();
@@ -1217,6 +1380,10 @@ const initializeSortable = () => {
             taskCard.id = task.id;
             taskCard.dataset.taskId = task.id;
 
+            // Creator info
+            const creator = task.createdBy ? `<div class='text-muted small'>Created by <span class='fw-bold'>${task.createdBy.name || task.createdBy.email}</span>${task.createdAt ? ' on ' + new Date(task.createdAt).toLocaleString() : ''}</div>` : '';
+            // Last editor info
+            const lastEditor = task.lastEditedBy ? `<div class='text-muted small'>Last edited by <span class='fw-bold'>${task.lastEditedBy.name || task.lastEditedBy.email}</span>${task.lastEditedAt ? ' on ' + new Date(task.lastEditedAt).toLocaleString() : ''}</div>` : '';
             taskCard.innerHTML = `
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -1224,7 +1391,9 @@ const initializeSortable = () => {
                         ${getPriorityBadge(task.priority)}
                     </div>
                     ${task.details ? `<p class="card-text small text-muted mb-3">${task.details.substring(0,80)}${task.details.length > 80 ? '...' : ''}</p>` : ''}
-                    <div class="d-flex justify-content-between align-items-center">
+                    ${creator}
+                    ${lastEditor}
+                    <div class="d-flex justify-content-between align-items-center mt-2">
                         <div class="d-flex align-items-center">
                             ${task.deadline ? `
                                 <span class="material-icons me-1 text-muted" style="font-size: 1rem;">event</span>
@@ -1315,6 +1484,9 @@ const initializeSortable = () => {
                             </button>
                         </div>
                     `;
+                    // Creator info
+                    const creator = idea.createdBy ? `<div class='text-muted small'>Added by <span class='fw-bold'>${idea.createdBy.name || idea.createdBy.email}</span>${idea.createdAt ? ' on ' + new Date(idea.createdAt).toLocaleString() : ''}</div>` : '';
+                    item.innerHTML += creator;
                     ideaList.appendChild(item);
                 });
             };
@@ -1413,77 +1585,108 @@ const initializeSortable = () => {
             };
 
             // --- Event Handlers ---
-            addProjectForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newProject = {
-                    id: `proj_${Date.now()}`,
-                    name: document.getElementById('projectName').value,
-                    description: document.getElementById('projectDescription').value,
-                    dueDate: document.getElementById('projectDueDate').value,
-                    tasks: [],
-                    ideas: []
-                };
-                projects.unshift(newProject);
-                await saveProjects();
-                addProjectForm.reset();
-                addProjectModal.hide();
-            });
-
-            projectSearch.addEventListener('input', (e) => {
-                renderProjects(e.target.value);
-            });
-
-            projectList.addEventListener('click', (e) => {
-                const card = e.target.closest('.project-card');
-                if (card) {
-                    showProjectDetail(card.dataset.projectId);
-                }
-            });
-            
-            document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            const taskForm = document.getElementById('taskForm');
+            taskForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const project = findProject(currentProjectId);
                 const taskId = document.getElementById('taskId').value;
-
+                const userInfo = getUserInfo(currentUser);
+                const now = Date.now();
                 const taskData = {
                     title: document.getElementById('taskTitle').value,
                     details: document.getElementById('taskDetails').value,
                     priority: document.getElementById('taskPriority').value,
                     deadline: document.getElementById('taskDeadline').value
                 };
-
                 if (taskId) { // Editing existing task
                     const taskIndex = project.tasks.findIndex(t => t.id === taskId);
-                    project.tasks[taskIndex] = { ...project.tasks[taskIndex], ...taskData };
+                    project.tasks[taskIndex] = {
+                        ...project.tasks[taskIndex],
+                        ...taskData,
+                        lastEditedBy: userInfo,
+                        lastEditedAt: now
+                    };
+                    // Log activity
+                    if (!project.activity) project.activity = [];
+                    project.activity.unshift({
+                        type: 'updated',
+                        target: 'task',
+                        targetId: taskId,
+                        user: userInfo,
+                        timestamp: now,
+                        description: `Task updated: ${taskData.title}`
+                    });
+                    // Add contributor
+                    if (!project.contributors) project.contributors = [];
+                    if (!project.contributors.some(c => c.uid === userInfo.uid)) {
+                        project.contributors.push(userInfo);
+                    }
                 } else { // New task
                     const newTask = {
-                        id: `task_${Date.now()}`,
+                        id: `task_${now}`,
                         status: 'todo',
-                        ...taskData
+                        ...taskData,
+                        createdBy: userInfo,
+                        createdAt: now
                     };
                     project.tasks.push(newTask);
+                    // Log activity
+                    if (!project.activity) project.activity = [];
+                    project.activity.unshift({
+                        type: 'created',
+                        target: 'task',
+                        targetId: newTask.id,
+                        user: userInfo,
+                        timestamp: now,
+                        description: `Task created: ${taskData.title}`
+                    });
+                    // Add contributor
+                    if (!project.contributors) project.contributors = [];
+                    if (!project.contributors.some(c => c.uid === userInfo.uid)) {
+                        project.contributors.push(userInfo);
+                    }
                 }
                 
                 await saveProjects();
                 taskModal.hide();
             });
 
-            document.getElementById('addIdeaForm').addEventListener('submit', async e => {
+            const addIdeaForm = document.getElementById('addIdeaForm');
+            addIdeaForm.addEventListener('submit', async e => {
                  e.preventDefault();
                  const project = findProject(currentProjectId);
+                 const userInfo = getUserInfo(currentUser);
+                 const now = Date.now();
                  const newIdea = {
-                    id: `idea_${Date.now()}`,
+                    id: `idea_${now}`,
                     title: document.getElementById('ideaTitle').value,
                     description: document.getElementById('ideaDescription').value,
+                    createdBy: userInfo,
+                    createdAt: now
                  }
                  project.ideas.unshift(newIdea);
+                 // Log activity
+                 if (!project.activity) project.activity = [];
+                 project.activity.unshift({
+                    type: 'created',
+                    target: 'idea',
+                    targetId: newIdea.id,
+                    user: userInfo,
+                    timestamp: now,
+                    description: `Idea added: ${newIdea.title}`
+                 });
+                 // Add contributor
+                 if (!project.contributors) project.contributors = [];
+                 if (!project.contributors.some(c => c.uid === userInfo.uid)) {
+                    project.contributors.push(userInfo);
+                 }
                  await saveProjects();
                  document.getElementById('addIdeaForm').reset();
                  addIdeaModal.hide();
             });
             
             // --- Global Functions for inline onclick ---
-            window.openTaskModal = (taskId = null) => {
+            window.openTaskModal = function(taskId = null) {
                 const form = document.getElementById('taskForm');
                 form.reset();
                 document.getElementById('taskId').value = '';
@@ -1547,8 +1750,49 @@ const initializeSortable = () => {
                 document.getElementById('tasks-tab').click();
             };
 
-
-            
+            // Add global function to show project ID and copy to clipboard
+            window.showShareProjectId = function() {
+                const project = findProject(currentProjectId);
+                if (!project) return;
+                const id = project.id;
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.id = 'shareProjectIdModal';
+                modal.tabIndex = -1;
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Share Project ID</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <p class="mb-2">Share this Project ID with others to collaborate:</p>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control text-center" value="${id}" id="shareProjectIdInput" readonly>
+                                    <button class="btn btn-outline-primary" type="button" id="copyProjectIdBtn">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+                modal.addEventListener('hidden.bs.modal', () => {
+                    modal.remove();
+                });
+                setTimeout(() => {
+                    document.getElementById('copyProjectIdBtn').onclick = function() {
+                        const input = document.getElementById('shareProjectIdInput');
+                        input.select();
+                        input.setSelectionRange(0, 99999);
+                        document.execCommand('copy');
+                        this.textContent = 'Copied!';
+                        setTimeout(() => { this.textContent = 'Copy'; }, 1500);
+                    };
+                }, 500);
+            };
 
 
             // --- Authentication Functions ---
@@ -1576,6 +1820,11 @@ const initializeSortable = () => {
             setInitialTheme();
             initializeAuth(); // Initialize authentication state
             showDashboard();
+
+            // Add global function to open chat room
+            window.openChatRoom = function(projectId) {
+                window.open(`chat.html?projectId=${encodeURIComponent(projectId)}`, '_blank');
+            };
         });
     </script>
 </body>
